@@ -12,6 +12,7 @@ pub(crate) struct CircuitQueries {
     pub(crate) common: Vec<Query>,
     pub(crate) vanishing: Vec<Query>,
     pub(crate) lookup: Vec<Query>,
+    pub(crate) trashcan: Vec<Query>,
 }
 
 impl CircuitQueries {
@@ -22,8 +23,9 @@ impl CircuitQueries {
     // 4. FIXED
     // 5. COMMON
     // 6. VANISHING
+    // 7. TRASHCAN
     /// Returns all queries ordered by type.
-    pub(crate) fn all_ordered(&self) -> [Vec<Query>; 6] {
+    pub(crate) fn all_ordered(&self) -> [Vec<Query>; 7] {
         [
             self.advice.clone(),
             self.permutation.clone(),
@@ -31,6 +33,7 @@ impl CircuitQueries {
             self.fixed.clone(),
             self.common.clone(),
             self.vanishing.clone(),
+            self.trashcan.clone(),
         ]
     }
 
@@ -115,5 +118,15 @@ impl CircuitQueries {
     ) -> () {
         let query = Query::new(commitment, evaluation, point);
         self.lookup.push(query);
+    }
+
+    /// Extract a trashcan query to the CircuitQueries structure.
+    pub(crate) fn trashcan(&mut self, index: usize) -> () {
+        let query = Query::new(
+            Commitments::Trashcan(index),
+            Evaluations::Trashcan(index),
+            RotationDescription::Current,
+        );
+        self.trashcan.push(query);
     }
 }

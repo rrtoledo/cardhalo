@@ -18,10 +18,13 @@ pub(crate) enum ProofExtractionSteps {
     LookupPermuted,
     LookupCommitment,
     LookupEval,
-    // Vanishing polynoial steps
+    // Vanishing polynomial steps
     VanishingRand,
     RandomEval,
     VanishingSplit,
+    // Trashcan steps
+    TrashCommited,
+    TrashEval,
     // Challenges extraction
     SqueezeChallenge,
     XCoordinate,

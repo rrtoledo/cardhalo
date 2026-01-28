@@ -124,8 +124,17 @@ where
         vk.cs().lookups().iter().for_each(|argument| {
             let inputs = argument.input_expressions().to_vec();
             let tables = argument.table_expressions().to_vec();
-            println!("inputs: {:#?}", inputs);
             circuit_description.expressions.lookup(inputs, tables);
+        });
+
+        // Extracting compiled_trashcans expressions
+        vk.cs().trashcans().iter().for_each(|argument| {
+            let name = argument.name().to_string();
+            let selector = argument.selector().clone();
+            let expression = argument.constraint_expressions().to_vec();
+            circuit_description
+                .expressions
+                .trashcan(name, selector, expression);
         });
 
         // Extracting permutations_evaluated_terms
@@ -223,6 +232,15 @@ where
                 RotationDescription::Next,
             );
         });
+
+        // Extracting trashcan queries
+        vk.cs()
+            .trashcans()
+            .iter()
+            .enumerate()
+            .for_each(|(query_index, _arg)| {
+                circuit_description.queries.trashcan(query_index + 1);
+            });
     }
 
     // Extracting PCS steps

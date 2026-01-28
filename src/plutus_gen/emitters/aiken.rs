@@ -761,7 +761,7 @@ where
 }
 
 #[allow(dead_code)]
-fn construct_intermediate_sets(queries: [Vec<Query>; 6]) -> Vec<(Vec<Query>, RotationDescription)> {
+fn construct_intermediate_sets(queries: [Vec<Query>; 7]) -> Vec<(Vec<Query>, RotationDescription)> {
     let mut point_query_map: Vec<(RotationDescription, Vec<Query>)> = Vec::new();
     for query in queries.iter().flatten() {
         if let Some(pos) = point_query_map
