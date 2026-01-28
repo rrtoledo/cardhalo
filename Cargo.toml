@@ -22,6 +22,8 @@ midnight-circuits = { version = "6.0.0", default-features=false }
 midnight-curves = { version = "0.2.0" }
 midnight-proofs = { version = "0.7.0" }
 midnight-zk-stdlib = { version = "1.0.0" }
+mithril-circuits = { path = "../mithril-circuits" }
+
 group = "0.13"
 ff = "0.13.0"
 
