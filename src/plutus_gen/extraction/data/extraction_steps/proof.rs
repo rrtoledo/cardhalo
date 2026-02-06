@@ -71,7 +71,7 @@ pub(crate) fn extract_proof_steps<PCS>(
     circuit_repr.extract_step(ProofExtractionSteps::Trash);
 
     (0..vk.cs().trashcans().len()).for_each(|_| {
-        circuit_repr.extract_step(ProofExtractionSteps::TrashCommited);
+        circuit_repr.extract_step(ProofExtractionSteps::TrashCommitment);
     });
 
     circuit_repr.extract_step(ProofExtractionSteps::VanishingRand);

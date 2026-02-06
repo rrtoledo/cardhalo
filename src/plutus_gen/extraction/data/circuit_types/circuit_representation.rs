@@ -145,9 +145,9 @@ impl<PCS: ExtractPCS> CircuitRepresentation<PCS> {
             ProofExtractionSteps::Trash => self
                 .proof_extraction_steps
                 .push(ProofExtractionSteps::Trash),
-            ProofExtractionSteps::TrashCommited => self
+            ProofExtractionSteps::TrashCommitment => self
                 .proof_extraction_steps
-                .push(ProofExtractionSteps::TrashCommited),
+                .push(ProofExtractionSteps::TrashCommitment),
             ProofExtractionSteps::TrashEval => self
                 .proof_extraction_steps
                 .push(ProofExtractionSteps::TrashEval),

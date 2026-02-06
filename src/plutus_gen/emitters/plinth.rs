@@ -99,20 +99,17 @@ where
                         + &format!("  !permuted_table_eval_{} <- M.readScalar\n", number + 1)
                 })
                 .join(""),
-            ProofExtractionSteps::Trash => "  !trash_challenge <- M.squeezeChallenge\n".to_string(),
-            ProofExtractionSteps::TrashCommited => section
+            ProofExtractionSteps::Trash => "  !trash <- M.squeezeChallenge\n".to_string(),
+            ProofExtractionSteps::TrashCommitment => section
                 .enumerate()
                 .map(|(number, _trashcan)| {
-                    format!(
-                        "    !trashcanCommitment{} <- =  M.readPoint\n\n",
-                        number + 1
-                    )
+                    format!("  !trashcanCommitment{} <- =  M.readPoint\n\n", number + 1)
                 })
                 .join(""),
             ProofExtractionSteps::TrashEval => section
                 .enumerate()
                 .map(|(number, _trashcan)| {
-                    format!("    !trashcanEval{} <- M.readScalar\n", number + 1)
+                    format!("  !trashcanEval{} <- M.readScalar\n", number + 1)
                 })
                 .join(""),
         })

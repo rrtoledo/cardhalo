@@ -23,7 +23,7 @@ pub(crate) enum ProofExtractionSteps {
     RandomEval,
     VanishingSplit,
     // Trashcan steps
-    TrashCommited,
+    TrashCommitment,
     TrashEval,
     // Challenges extraction
     SqueezeChallenge,

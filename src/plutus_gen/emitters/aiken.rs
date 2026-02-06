@@ -115,9 +115,9 @@ where
                         + &format!("    let (permuted_table_eval_{}, transcript) = read_scalar(transcript)\n", number + 1)
                 })
                 .join(""),
-            ProofExtractionSteps::Trash => "    let (trash_challenge, transcript) = squeeze_challenge(transcript)\n".to_string(),
-            ProofExtractionSteps::TrashCommited => section.enumerate().map(|(number, _trashcan)| {
-                format!("    let (t{}_commitment, transcript) =  read_point(transcript)\n", number + 1)
+            ProofExtractionSteps::Trash => "    let (trash, transcript) = squeeze_challenge(transcript)\n".to_string(),
+            ProofExtractionSteps::TrashCommitment => section.enumerate().map(|(number, _trashcan)| {
+                format!("    let (trashcan_commitment_{}, transcript) =  read_point(transcript)\n", number + 1)
             }).join(""),
             ProofExtractionSteps::TrashEval => section.enumerate().map(|(number, _trashcan)| {
                 format!("    let (trashcan_eval_{}, transcript) = read_scalar(transcript)\n", number + 1)
@@ -371,21 +371,22 @@ where
 
         // Adding trashcan expressions
         let trashcans = circuit
-        .expressions.compiled_trashcans
-        .iter()
-        .enumerate()
-        .map(|(id, trash_info)| {
-            let (_name, selector, expression) = trash_info;
-            format!(
-                "    let trashcan_exp{:?} = sub({:?}, mul(sub({}, {:?}), trashcan_eval_{:?}))\n",
-                id + 1,
-                combine_aiken_expressions(expression.clone(), TRASH_STR),
-                ONE_STR,
-                selector.compile_expression(),
-                id + 1
-            )
-        })
-        .join("");
+            .expressions
+            .compiled_trashcans
+            .iter()
+            .enumerate()
+            .map(|(id, trash_info)| {
+                let (_name, selector, expression) = trash_info;
+                format!(
+                    "    let trashcan_exp{:?} = sub({}, mul(sub({}, {}), trashcan_eval_{:?}))\n",
+                    id + 1,
+                    combine_aiken_expressions(expression.clone(), TRASH_STR),
+                    ONE_STR,
+                    selector.compile_expression(),
+                    id + 1
+                )
+            })
+            .join("");
         data.insert("TRASHCANS".to_string(), trashcans);
 
         // Computing vanishing expressions by relisting all gates and step expressions

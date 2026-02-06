@@ -101,11 +101,11 @@ where
         PCSType::Halo2MultiOpen => Path::new("aiken-verifier/templates/verification_h2.hbs"),
     };
 
-    let public_inputs = if instances[0].len() == 1 {
-        instances[0][0]
+    let public_inputs = if instances[0].len() == 2 {
+        instances[0][1]
     } else {
         // we have committed instances
-        instances[0][1]
+        instances[0][0]
     };
 
     emit_verifier_aiken(
