@@ -10,7 +10,7 @@ pub(crate) enum ProofExtractionSteps {
     AdviceCommitments,
     AdviceEval,
     FixedEval,
-    // Lookup steps
+    // Permutation steps
     PermutationsCommitted,
     PermutationEval(char),
     PermutationCommon,
