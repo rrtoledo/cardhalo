@@ -72,7 +72,7 @@ fn main() -> Result<()> {
             let e = JubjubScalar::from_bytes_wide(&buff);
             k - e * shnorr_sk
         };
- 
+
         SchnorrSignature { s, e_bytes }
     };
 
