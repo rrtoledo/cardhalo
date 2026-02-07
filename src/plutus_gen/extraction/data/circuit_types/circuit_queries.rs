@@ -48,8 +48,8 @@ impl CircuitQueries {
         point: i32,
     ) -> () {
         let query = Query::new(
-            Commitments::Instance(commitment_index), //format!("a{:?}", column.index() + 1),
-            Evaluations::Instance(evaluation_index), //format!("adviceEval{:?}", query_index + 1),
+            Commitments::Instance(commitment_index), //format!("ci{:?}", column.index() + 1),
+            Evaluations::Instance(evaluation_index), //format!("instanceEval{:?}", query_index + 1),
             RotationDescription::from_i32(point),
         );
         self.instance.push(query);
