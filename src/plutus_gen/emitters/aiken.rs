@@ -27,6 +27,110 @@ pub fn emit_verifier_code<PCS>(
 where
     PCS: ExtractPCS,
 {
+    // Data structure we write the code in and bind with mustache template
+    let mut data: HashMap<String, String> = HashMap::new();
+
+    // Extracting committed instances
+    let committed_instance_names: Vec<String> =
+        (1..=circuit.proof_instantiation_data.committed_instances_count)
+            .map(|n| format!("ci_{}", n))
+            .collect();
+
+    // Writing committed instances names in verify function's interface
+    data.insert("COMMITED_INSTANCES_NAMES".to_string(), {
+        let cins = committed_instance_names
+            .clone()
+            .iter()
+            .map(|name| format!("{}: State<ByteArray>", name))
+            .join(", ");
+        let mut suffix = "";
+        if circuit.proof_instantiation_data.committed_instances_count > 0
+            && circuit.proof_instantiation_data.public_inputs_count > 0
+        {
+            suffix = " ,";
+        }
+        let mut to_write_down = String::with_capacity(cins.len() + suffix.len());
+        to_write_down.push_str(&cins);
+        to_write_down.push_str(&suffix);
+        to_write_down
+    });
+
+    // Absorbing number and value of committed instances in transcript
+    if circuit
+        .proof_instantiation_data
+        .committed_instances_supported
+    {
+        let nb_committed_instances = format!(
+            "    let committed_instance_count = from_int({})\n",
+            circuit
+                .proof_instantiation_data
+                .committed_instances_count
+                .to_string()
+        );
+        let number_in_transcript =
+            format!("    let transcript = common_scalar(committed_instance_count, transcript)\n");
+
+        let committed_instances = committed_instance_names
+            .iter()
+            .map(|n| format!("    let transcript = common_point({}, transcript)\n", n))
+            .join("");
+
+        let mut all_cis = String::with_capacity(
+            nb_committed_instances.len() + number_in_transcript.len() + committed_instances.len(),
+        );
+        all_cis.push_str(&nb_committed_instances);
+        all_cis.push_str(&number_in_transcript);
+        all_cis.push_str(&committed_instances);
+        data.insert("ABSORB_COMMITTED_INSTANCES".to_string(), all_cis);
+    };
+
+    // Writing committed instances names in verify function's interface
+    let public_inputs_names: Vec<String> =
+        (1..=circuit.proof_instantiation_data.public_inputs_count)
+            .map(|n| format!("i_{}", n))
+            .collect();
+
+    data.insert(
+        "PUBLIC_INPUTS_NAMES".to_string(),
+        public_inputs_names
+            .clone()
+            .iter()
+            .map(|name| format!("{} : State<Scalar>", name))
+            .join(", "),
+    );
+
+    // Absorbing number and values of public inputs in transcript
+    {
+        let nb_public_inputs = format!(
+            "    let inputs_count = from_int({})\n",
+            circuit
+                .proof_instantiation_data
+                .public_inputs_count
+                .to_string()
+        );
+        let number_in_transcript =
+            format!("    let transcript = common_scalar(inputs_count, transcript)\n");
+
+        let public_inputs = public_inputs_names
+            .iter()
+            .map(|name| format!("    let transcript = common_scalar({}, transcript)\n", name))
+            .join("");
+
+        let mut all_is = String::with_capacity(
+            nb_public_inputs.len() + number_in_transcript.len() + public_inputs.len(),
+        );
+        all_is.push_str(&nb_public_inputs);
+        all_is.push_str(&number_in_transcript);
+        all_is.push_str(&public_inputs);
+        data.insert("ABSORB_PUBLIC_INPUTS".to_string(), all_is);
+    };
+
+    // Extracting from transcript commitments and evaluations
+    // Also generating instances' evaluation
+    let public_inputs_lagrange = (1..=circuit.proof_instantiation_data.public_inputs_count)
+        .map(|n| format!("i_{}", n))
+        .join(", ");
+
     let letters = 'a'..='z';
     let proof_extraction: Vec<_> = circuit
         .proof_extraction_steps
@@ -58,7 +162,18 @@ where
                         idx = number + 1)
                 })
                 .join(""),
-            ProofExtractionSteps::XCoordinate => "    let (x, transcript) = squeeze_challenge(transcript)\n".to_string(),
+            ProofExtractionSteps::XCoordinate => {
+                let reading_x = "    let (x, transcript) = squeeze_challenge(transcript)\n".to_string();
+                // let exponent = format!("let n = {}\n", circuit.proof_instantiation_data.n_coefficient.to_string());
+                let scaling_x = format!("    let xn_minus_one = scale(x, {}-1)\n",circuit.proof_instantiation_data.n_coefficient.to_string()).to_string();
+                let scaling_x_again = "    let xn = mul(xn_minus_one, x)\n".to_string();
+                let mut to_write_down = String::with_capacity(reading_x.len() +  scaling_x.len() + scaling_x_again.len());
+                to_write_down.push_str(&reading_x);
+                // to_write_down.push_str(&exponent);
+                to_write_down.push_str(&scaling_x);
+                to_write_down.push_str(&scaling_x_again);
+                to_write_down
+            },
             ProofExtractionSteps::AdviceEval => section
                 .enumerate()
                 .map(|(number, _advice_eval)| {
@@ -122,6 +237,34 @@ where
             ProofExtractionSteps::TrashEval => section.enumerate().map(|(number, _trashcan)| {
                 format!("    let (trashcan_eval_{}, transcript) = read_scalar(transcript)\n", number + 1)
             }).join(""),
+            ProofExtractionSteps::CommittedInstanceEval => section.enumerate().map(|(number, _ci)| {
+                match (circuit.proof_instantiation_data.committed_instances_supported,circuit.proof_instantiation_data.committed_instances_count) {
+                    (false, _) => panic!("This case should never happen, as we should not have any CommittedInstanceEval"),
+                    (true, 0) => {assert!(number == 0); format!("\n    let instance_eval_1 = from_int(0)\n")},
+                    (true, _) => format!("    let (instance_eval_{}, transcript) = read_scalar(transcript)\n", number + 1)
+                }
+            }).join(""),
+            ProofExtractionSteps::InstanceEval => section.enumerate().map(|(number, _i)| {
+                let mut offset = circuit.proof_instantiation_data.committed_instances_count;
+                // When we support committed instances but have none, we still
+                // create a dedicated null instance evaluation for them, as
+                // such we need to offset the public instances instance_eval's
+                // index.
+                if circuit.proof_instantiation_data.committed_instances_supported && circuit.proof_instantiation_data.committed_instances_count == 0 {
+                    offset += 1;
+                }
+                let rotations = format!("\n    let rotations_for_instances = rotate_omegas(omega, omega_inv, 0, {})\n", circuit.proof_instantiation_data.public_inputs_count);
+                let lagrange = format!("    let lagrange_polynomial_instances = lagrange_polynomial_basis( x, xn, barycentric_weight, rotations_for_instances)\n");
+                let instance = format!("    let instance_eval_{} = inner_product(lagrange_polynomial_instances, [{}])\n\n", number + offset + 1, public_inputs_lagrange);
+                let mut all_strings_instance = String::with_capacity(
+                    rotations.len() + lagrange.len() + instance.len(),
+                );
+                all_strings_instance.push_str(&rotations);
+                all_strings_instance.push_str(&lagrange);
+                all_strings_instance.push_str(&instance);
+                all_strings_instance
+            }).join("")
+            ,
         })
         .collect();
 
@@ -138,37 +281,8 @@ where
         })
         .collect::<Vec<_>>();
 
-    let mut data: HashMap<String, String> = HashMap::new(); // data to bind to mustache template
-
-    data.insert(
-        "PUBLIC_INPUTS_COUNT".to_string(),
-        circuit.public_inputs.to_string(),
-    );
-
-    let public_inputs_lagrange = (1..=circuit.proof_instantiation_data.public_inputs_count)
-        .map(|n| format!("i_{}", n))
-        .join(", ");
-    data.insert("PUBLIC_INPUTS_LAGRANGE".to_string(), public_inputs_lagrange);
-
-    let public_inputs = (1..=circuit.proof_instantiation_data.public_inputs_count)
-        .map(|n| format!("    let transcript = common_scalar(i_{}, transcript)\n", n))
-        .join("");
-
-    data.insert("PUBLIC_INPUTS".to_string(), public_inputs);
-
-    let public_inputs_names = (1..=circuit.proof_instantiation_data.public_inputs_count)
-        .map(|n| format!("i_{}: State<Scalar>", n))
-        .join(", ");
-
-    data.insert("PUBLIC_INPUTS_NAMES".to_string(), public_inputs_names);
-
     let extraction_stage = proof_extraction.join("") + &pcs_extraction.join("");
     data.insert("PES".to_string(), extraction_stage);
-
-    data.insert(
-        "X_EXPONENT".to_string(),
-        circuit.proof_instantiation_data.n_coefficient.to_string(),
-    );
 
     // Adding expressions for gates, lookups, permutations and trashcans
     {
@@ -822,34 +936,13 @@ where
     handlebars.render("aiken_template", &data)
 }
 
-#[allow(dead_code)]
-fn construct_intermediate_sets(queries: [Vec<Query>; 7]) -> Vec<(Vec<Query>, RotationDescription)> {
-    let mut point_query_map: Vec<(RotationDescription, Vec<Query>)> = Vec::new();
-    for query in queries.iter().flatten() {
-        if let Some(pos) = point_query_map
-            .iter()
-            .position(|(point, _)| *point == query.point)
-        {
-            let (_, queries) = &mut point_query_map[pos];
-            queries.push(*query);
-        } else {
-            point_query_map.push((query.point, vec![*query]));
-        }
-    }
-
-    point_query_map
-        .into_iter()
-        .map(|(point, queries)| (queries, point))
-        .collect()
-}
-
 // symbolic representation of powers of specific scalar
 #[allow(dead_code)]
 fn powers(name: char) -> impl Iterator<Item = ScalarOperation> {
     (0..).map(move |idx| ScalarOperation::Power(name, idx))
 }
 
-//this is done in Plinth with template haskell since there is no macro language for aiken
+// This is done in Plinth with template haskell since there is no macro language for aiken
 // constructing final MSM was reimplemented with pure code generation
 // to make it easier to debug this function is 1:1 analog to multi_prepare
 // in src/poly/gwc_kzg/mod.rs
