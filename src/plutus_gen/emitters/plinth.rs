@@ -20,6 +20,123 @@ pub fn emit_verifier_code<PCS>(
 where
     PCS: ExtractPCS,
 {
+    // Data structure we write the code in and bind with mustache template
+    let mut data: HashMap<String, String> = HashMap::new();
+
+    // Lifting verification key information
+    {
+        let fixed_commitments_lifts = (1..=circuit.proof_instantiation_data.fixed_commitments.len()).map(|id| {
+        format!("f{}_commitment :: BuiltinBLS12_381_G1_Element\nf{}_commitment = $(lift VKConstants.f{}_commitment)\n\n", id, id, id)
+    }).join("");
+        data.insert(
+            "FIXED_COMMITMENT_LIFTS".to_string(),
+            fixed_commitments_lifts,
+        );
+
+        let permutation_commitments_lifts = (1..=circuit.proof_instantiation_data.permutation_commitments.len()).map(|id| {
+        format!("p{}_commitment :: BuiltinBLS12_381_G1_Element\np{}_commitment = $(lift VKConstants.p{}_commitment)\n\n", id, id, id)
+    }).join("");
+
+        data.insert(
+            "PERMUTATION_COMMITMENT_LIFTS".to_string(),
+            permutation_commitments_lifts,
+        );
+    }
+
+    let nb_public_inputs = circuit.proof_instantiation_data.public_inputs_count;
+    let nb_committed_instances = circuit.proof_instantiation_data.committed_instances_count;
+    let committed_instances_supported = circuit
+        .proof_instantiation_data
+        .committed_instances_supported;
+
+    // Handling committed instances
+    if committed_instances_supported {
+        let committed_instances_names: Vec<String> = (1..=nb_committed_instances)
+            .map(|n| format!("ci{}", n))
+            .collect();
+
+        let mut suffix = "";
+        if nb_committed_instances > 0 && nb_public_inputs > 0 {
+            suffix = " ";
+        }
+
+        // Writing committed instance types in verify function's definition
+        data.insert("COMMITTED_INSTANCES_TYPES".to_string(), {
+            let ci_types = (1..=nb_committed_instances)
+                .map(|_| "BuiltinBLS12_381_G1_Element ->".to_string())
+                .join(" ");
+            let mut to_write_down = String::with_capacity(ci_types.len() + suffix.len());
+            to_write_down.push_str(&ci_types);
+            to_write_down.push_str(suffix);
+            to_write_down
+        });
+
+        // Writing committed instance types in verify function's interface
+        data.insert("COMMITTED_INSTANCES_NAMES".to_string(), {
+            let ci_names = committed_instances_names.iter().join(" ");
+            let mut to_write_down = String::with_capacity(ci_names.len() + suffix.len());
+            to_write_down.push_str(&ci_names);
+            to_write_down.push_str(suffix);
+            to_write_down
+        });
+
+        // Absorbing number and value of committed instances in transcript
+        data.insert("ABSORB_COMMITTED_INSTANCES".to_string(), {
+            let absorb_nb_committed_instances = format!(
+                "  _ <- M.commonScalar (mkScalar {})\n",
+                nb_committed_instances
+            );
+
+            // TODO
+            let absorb_committed_instances = (1..=nb_committed_instances)
+                .map(|n| format!("  !i{} <- M.commonG1 ci{}\n", n, n))
+                .join("");
+
+            let mut to_write_down = String::with_capacity(
+                absorb_nb_committed_instances.len() + absorb_committed_instances.len(),
+            );
+            to_write_down.push_str(&absorb_nb_committed_instances);
+            to_write_down.push_str(&absorb_committed_instances);
+            to_write_down
+        });
+    }
+
+    // Handling public inputs
+    {
+        data.insert(
+            "PUBLIC_INPUTS_COUNT".to_string(),
+            nb_public_inputs.to_string(),
+        );
+
+        let public_inputs_names: Vec<String> =
+            (1..=nb_public_inputs).map(|n| format!("p{}", n)).collect();
+
+        data.insert(
+            "PUBLIC_INPUTS_TYPES".to_string(),
+            (1..=nb_public_inputs)
+                .map(|_| "Scalar ->".to_string())
+                .join(" "),
+        );
+
+        data.insert(
+            "PUBLIC_INPUTS_NAMES".to_string(),
+            public_inputs_names.iter().join(" "),
+        );
+
+        let absorb_nb_public_inputs =
+            format!("  _ <- M.commonScalar (mkScalar {})\n", nb_public_inputs);
+
+        let absorb_public_inputs = (1..=nb_public_inputs)
+            .map(|n| format!("  !i{} <- M.commonScalar p{}\n", n, n))
+            .join("");
+
+        let mut public_inputs =
+            String::with_capacity(absorb_nb_public_inputs.len() + absorb_public_inputs.len());
+        public_inputs.push_str(&absorb_nb_public_inputs);
+        public_inputs.push_str(&absorb_public_inputs);
+        data.insert("ABSORB_PUBLIC_INPUTS".to_string(), public_inputs);
+    }
+
     let letters = 'a'..='z';
     let proof_extraction: Vec<_> = circuit
         .proof_extraction_steps
@@ -48,7 +165,17 @@ where
                     format!("  !vanishingSplit_{} <- M.readPoint\n", number + 1)
                 })
                 .join(""),
-            ProofExtractionSteps::XCoordinate => "  !x <- M.squeezeChallenge\n".to_string(),
+            ProofExtractionSteps::XCoordinate => {
+                let squeezing_x = "  !x <- M.squeezeChallenge\n".to_string();
+                let scaling_x = format!("  let !xn_minus_one = powMod x ({}-1)\n",circuit.proof_instantiation_data.n_coefficient.to_string()).to_string();
+                let scaling_x_again = "  let !xn = xn_minus_one * x\n".to_string();
+                let mut to_write_down = String::with_capacity(squeezing_x.len() +  scaling_x.len() + scaling_x_again.len());
+                to_write_down.push_str(&squeezing_x);
+                to_write_down.push_str(&scaling_x);
+                to_write_down.push_str(&scaling_x_again);
+                to_write_down
+            }
+            ,
             ProofExtractionSteps::AdviceEval => section
                 .enumerate()
                 .map(|(number, _advice_eval)| {
@@ -103,7 +230,7 @@ where
             ProofExtractionSteps::TrashCommitment => section
                 .enumerate()
                 .map(|(number, _trashcan)| {
-                    format!("  !trashcanCommitment{} <- =  M.readPoint\n\n", number + 1)
+                    format!("  !trashcanCommitment{} <- M.readPoint\n\n", number + 1)
                 })
                 .join(""),
             ProofExtractionSteps::TrashEval => section
@@ -112,6 +239,32 @@ where
                     format!("  !trashcanEval{} <- M.readScalar\n", number + 1)
                 })
                 .join(""),
+            ProofExtractionSteps::CommittedInstanceEval => section.enumerate().map(|(number, _ci)| {
+                match (committed_instances_supported,nb_committed_instances) {
+                    (false, _) => panic!("This case should never happen, as we should not have any CommittedInstanceEval"),
+                    (true, 0) => {assert!(number == 0); format!("\n  let !instanceEval1 = scalarZero\n")},
+                    (true, _) => format!("  !instanceEval{} <-  M.readScalar\n", number + 1)
+                }
+            }).join(""),
+            ProofExtractionSteps::InstanceEval => section.enumerate().map(|(number, _i)| {
+                let mut offset = nb_committed_instances;
+                // When we support committed instances but have none, we still
+                // create a dedicated null instance evaluation for them, as
+                // such we need to offset the public instances instance_eval's
+                // index.
+                if committed_instances_supported && nb_committed_instances == 0 {
+                    offset += 1;
+                }
+                let public_inputs_lagrange = (1..=nb_public_inputs).map(|n| format!("i{}", n)).join(", ");
+                let lagrange = format!("  let !lagrange_polynomial_instances = lagrangePolynomialBasis x xn barycentricWeight rotations_for_instances\n");
+                let instance = format!("  let !instanceEval{} = innerProduct lagrange_polynomial_instances  [{}]\n\n", number + offset + 1, public_inputs_lagrange);
+                let mut all_strings_instance = String::with_capacity(
+                    lagrange.len() + instance.len(),
+                );
+                all_strings_instance.push_str(&lagrange);
+                all_strings_instance.push_str(&instance);
+                all_strings_instance
+            }).join(""),
         })
         .collect();
 
@@ -128,20 +281,8 @@ where
         })
         .collect::<Vec<_>>();
 
-    let mut data: HashMap<String, String> = HashMap::new(); // data to bind to mustache template
-
-    data.insert(
-        "PUBLIC_INPUTS_COUNT".to_string(),
-        circuit.public_inputs.to_string(),
-    );
-
     let proof_extraction_stage = proof_extraction.join("") + &pcs_extraction.join("");
     data.insert("PES".to_string(), proof_extraction_stage);
-
-    data.insert(
-        "X_EXPONENT".to_string(),
-        circuit.proof_instantiation_data.n_coefficient.to_string(),
-    );
 
     // Adding expressions for gates, lookups, permutations and trashcans
     {
@@ -536,42 +677,6 @@ where
         let q_evaluations = PCS::pcs_data_plinth(&circuit);
         data.insert("Q_EVALS_FROM_PROOF".to_string(), q_evaluations);
     }
-
-    let fixed_commitments_lifts = (1..=circuit.proof_instantiation_data.fixed_commitments.len()).map(|id| {
-        format!("f{}_commitment :: BuiltinBLS12_381_G1_Element\nf{}_commitment = $(lift VKConstants.f{}_commitment)\n\n", id, id, id)
-    }).join("");
-    let permutation_commitments_lifts = (1..=circuit.proof_instantiation_data.permutation_commitments.len()).map(|id| {
-        format!("p{}_commitment :: BuiltinBLS12_381_G1_Element\np{}_commitment = $(lift VKConstants.p{}_commitment)\n\n", id, id, id)
-    }).join("");
-    let public_inputs = (1..=circuit.proof_instantiation_data.public_inputs_count)
-        .map(|n| format!("  !i{} <- M.commonScalar p{}\n", n, n))
-        .join("");
-
-    let public_inputs_types = (1..=circuit.proof_instantiation_data.public_inputs_count)
-        .map(|_| "Scalar ->".to_string())
-        .join(" ");
-    let public_inputs_names = (1..=circuit.proof_instantiation_data.public_inputs_count)
-        .map(|n| format!("p{}", n))
-        .join(" ");
-
-    let public_inputs_lagrange = (1..=circuit.proof_instantiation_data.public_inputs_count)
-        .map(|n| format!("i{}", n))
-        .join(", ");
-
-    data.insert(
-        "FIXED_COMMITMENT_LIFTS".to_string(),
-        fixed_commitments_lifts,
-    );
-    data.insert(
-        "PERMUTATION_COMMITMENT_LIFTS".to_string(),
-        permutation_commitments_lifts,
-    );
-
-    data.insert("PUBLIC_INPUTS_TYPES".to_string(), public_inputs_types);
-    data.insert("PUBLIC_INPUTS_NAMES".to_string(), public_inputs_names);
-
-    data.insert("PUBLIC_INPUTS".to_string(), public_inputs);
-    data.insert("PUBLIC_INPUTS_LAGRANGE".to_string(), public_inputs_lagrange);
 
     // Include traces only in debug mode, because they increase cost of the Plutus verifier
     #[cfg(feature = "plutus_debug")]
