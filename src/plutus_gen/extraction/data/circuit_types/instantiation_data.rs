@@ -4,13 +4,13 @@
 
 use midnight_curves::{Bls12, BlsScalar as Scalar, G1Affine, G1Projective, G2Affine};
 
-use group::{Curve, prime::PrimeCurveAffine};
+use group::Curve;
 
 use midnight_proofs::plonk::VerifyingKey;
 use midnight_proofs::poly::commitment::PolynomialCommitmentScheme;
 use midnight_proofs::poly::kzg::params::ParamsKZG;
 
-use ff::{Field, WithSmallOrderMulGroup};
+use ff::Field;
 
 /// Type listing all instantiation specific data
 #[derive(Clone, Debug, Default)]
