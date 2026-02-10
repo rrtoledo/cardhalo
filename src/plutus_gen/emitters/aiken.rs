@@ -471,9 +471,14 @@ where
         // Combining left and right permutation expressions
         let permutations_combined = if sets_lhs.len() == sets_rhs.len() {
             let sets_number = sets_lhs.len();
-            (1..=sets_number).map(|n| {
-            format!("    let permutations{} = mul(sub(left_set{}, right_set{}), sub({}, add({}, sum_of_evaluation_for_blinding_factors)))\n", n, n, n, ONE_STR, EVAL_LAST_STR)
-        }).join("")
+            (1..=sets_number)
+                .map(|n| {
+                    format!(
+                        "    let permutations{} = mul(sub(left_set{}, right_set{}), active_rows)\n",
+                        n, n, n
+                    )
+                })
+                .join("")
         } else {
             panic!("permutations sets have to be equal length")
         };

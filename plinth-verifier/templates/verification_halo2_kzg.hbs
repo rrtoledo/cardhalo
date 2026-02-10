@@ -143,6 +143,8 @@ verify proof {{{COMMITTED_INSTANCES_NAMES}}}{{{PUBLIC_INPUTS_NAMES}}} = fst $ fl
       !evaluation_for_blinding_factors = take VKConstants.blinding_factors (drop 1 evaluations_of_lagrange_polynomial)
       !sum_of_evaluation_for_blinding_factors = foldl (+) zero evaluation_for_blinding_factors
       !evaluation_at_0 = evaluations_of_lagrange_polynomial !! (1 + VKConstants.blinding_factors)
+      -- lookups related part of vanishing polynomial
+      !active_rows = scalarOne - (last_evaluation + sum_of_evaluation_for_blinding_factors);
 
 {{{PERMUTATIONS_EVALS}}}
 
@@ -157,9 +159,6 @@ verify proof {{{COMMITTED_INSTANCES_NAMES}}}{{{PUBLIC_INPUTS_NAMES}}} = fst $ fl
 {{{PERMUTATIONS_COMBINED}}}
 
 {{{TRASHCANS}}}
-
-      -- lookups related part of vanishing polynomial
-      !active_rows = scalarOne - (last_evaluation + sum_of_evaluation_for_blinding_factors);
 
 {{{LOOKUPS}}}
 
