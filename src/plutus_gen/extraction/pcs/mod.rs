@@ -8,9 +8,6 @@
 
 use super::data::{CircuitRepresentation, CommitmentData, Commitments, Query, RotationDescription};
 
-#[cfg(feature = "plutus_debug")]
-use log::info;
-
 use itertools::Itertools;
 use std::collections::HashMap;
 
