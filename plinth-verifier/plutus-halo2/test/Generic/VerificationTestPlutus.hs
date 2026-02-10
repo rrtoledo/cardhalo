@@ -62,17 +62,13 @@ test = Tasty.testCase "proof verification test in plutus + budget calculations" 
     let p2 =
             mkScalar
                 ((parsedInputs !! 1) `modulo` bls12_381_field_prime)
-    let p3 =
-            mkScalar
-                ((parsedInputs !! 2) `modulo` bls12_381_field_prime)
-
-    let scriptSize' = estimateCompiledCodeSize (proofMintingPolicyContractApplied p1 p2 p3)
+    let scriptSize' = estimateCompiledCodeSize (proofMintingPolicyContractApplied p1 p2)
 
     Tasty.assertBool
         ("Applied script is too big: " <> show scriptSize')
         (scriptSize' < scriptSizeLimit)
 
-    case evalWithBudget' (verifyAppliedCompiled p1 p2 p3) of
+    case evalWithBudget' (verifyAppliedCompiled p1 p2) of
         Left e -> fail $ "Evaluator failed: " <> show e
         Right (budget, _) -> do
             putStrLn $ ""

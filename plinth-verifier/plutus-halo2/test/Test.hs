@@ -27,12 +27,9 @@ main = do
     let p2 =
             mkScalar
                 ((parsedInputs !! 1) `modulo` bls12_381_field_prime)
-    let p3 =
-            mkScalar
-                ((parsedInputs !! 2) `modulo` bls12_381_field_prime)
 
     --  this saves compiled plutus UPLC to a file for use with plutus analytics tools
-    Generic.VerifyCompiled.writeToFile p1 p2 p3
+    Generic.VerifyCompiled.writeToFile p1 p2
 
     defaultMain $
         testGroup
