@@ -2,6 +2,7 @@
 
 use super::super::{Commitments, Evaluations, ExpressionG1, ScalarExpression, constants::*};
 
+use ff::Field;
 use midnight_curves::BlsScalar as Scalar;
 use midnight_proofs::plonk::Expression;
 
@@ -119,7 +120,13 @@ impl AikenTranspiler for Expression<Scalar> {
     fn aiken_polynomial<W: Write>(&self, writer: &mut W) -> Result<()> {
         match self {
             Expression::Constant(scalar) => {
-                write!(writer, "from_int(0x{})", hex::encode(scalar.to_bytes_be()))
+                if *scalar == Scalar::ZERO {
+                    writer.write_all(b"scalarZero")
+                } else if *scalar == Scalar::ONE {
+                    writer.write_all(b"scalarOne")
+                } else {
+                    write!(writer, "from_int(0x{})", hex::encode(scalar.to_bytes_be()))
+                }
             }
             Expression::Selector(_selector) => {
                 panic!("Selector not supported in custom gate")
