@@ -99,6 +99,10 @@ where
             to_write_down.push_str(&absorb_committed_instances);
             to_write_down
         });
+    } else {
+        data.insert("COMMITTED_INSTANCES_TYPES".to_string(), "".to_string());
+        data.insert("COMMITTED_INSTANCES_NAMES".to_string(), "".to_string());
+        data.insert("ABSORB_COMMITTED_INSTANCES".to_string(), "".to_string());
     }
 
     // Handling public inputs

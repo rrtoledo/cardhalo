@@ -16,7 +16,7 @@ use verifier_key.{barycentric_weight, blinding_factors, omega, omega_inv, g2_con
 use halo2_kzg.{compute_msm}
 use aiken/crypto/bls12_381/pairing.{miller_loop, final_exponentiation}
 
-pub fn verifier(proof: Data, {{{COMMITED_INSTANCES_NAMES}}}{{{PUBLIC_INPUTS_NAMES}}}) -> Bool {
+pub fn verifier(proof: Data, {{{COMMITTED_INSTANCES_NAMES}}}{{{PUBLIC_INPUTS_NAMES}}}) -> Bool {
 
     let scalarZero = from_int(0)
     let scalarOne = from_int(1)
