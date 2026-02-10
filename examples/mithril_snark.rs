@@ -1,17 +1,10 @@
-use anyhow::{Context as _, Result, anyhow, bail};
+use anyhow::{Context as _, Result, anyhow};
 use ff::Field;
-use group::Group;
-use midnight_curves::{Bls12, BlsScalar as Scalar, G1Projective};
+use midnight_curves::BlsScalar as Scalar;
 
 use midnight_proofs::{
     plonk::{create_proof, prepare},
-    poly::{
-        commitment::{Guard, PolynomialCommitmentScheme},
-        kzg::{
-            KZGCommitmentScheme,
-            params::{ParamsKZG, ParamsVerifierKZG},
-        },
-    },
+    poly::{commitment::Guard, kzg::params::ParamsKZG},
     transcript::{CircuitTranscript, Transcript},
 };
 
@@ -22,11 +15,9 @@ use mithril_circuits::{
     merkle_tree::{MTLeaf, MerkleTree},
     unique_signature::{SigningKey, VerificationKey},
 };
-use plutus_halo2_verifier_gen::plutus_gen::generate_aiken_verifier;
-use plutus_halo2_verifier_gen::plutus_gen::proof_serialization::export_proof;
 use plutus_halo2_verifier_gen::plutus_gen::{
-    adjusted_types::CardanoFriendlyBlake2b, extraction::ExtractKZG, generate_plinth_verifier,
-    proof_serialization::export_public_inputs, proof_serialization::serialize_proof,
+    CardanoFriendlyBlake2b, export_proof, export_public_inputs, generate_aiken_verifier,
+    generate_plinth_verifier, serialize_proof,
 };
 use rand::rngs::StdRng;
 use rand_core::SeedableRng;
@@ -56,17 +47,6 @@ fn create_merkle_tree(n: usize) -> (Vec<SigningKey>, Vec<MTLeaf>, MerkleTree) {
 }
 
 fn main() -> Result<()> {
-    compile_mithril_snark_circuit::<KZGCommitmentScheme<Bls12>>()
-}
-
-fn compile_mithril_snark_circuit<
-    S: PolynomialCommitmentScheme<
-            Scalar,
-            Commitment = G1Projective,
-            Parameters = ParamsKZG<Bls12>,
-            VerifierParameters = ParamsVerifierKZG<Bls12>,
-        > + ExtractKZG,
->() -> Result<()> {
     let seed = [0u8; 32]; // UNSAFE, constant seed is used for testing purposes
     let mut rng: StdRng = SeedableRng::from_seed(seed);
     // Prepare the private and public inputs to the circuit!
@@ -170,7 +150,7 @@ fn compile_mithril_snark_circuit<
     // this should be safe and not result in malformed encoding exception
     // which is likely for flipping Byte for compressed G1 element
     // simple mul has 8 G1 elements at the beginning of the proof each 48 bytes long
-    let index = 48 * 8 + 2;
+    let index = 48 * 25 + 2;
     let firs_byte = invalid_proof[index];
     let negated_firs_byte = !firs_byte;
     invalid_proof[index] = negated_firs_byte;
