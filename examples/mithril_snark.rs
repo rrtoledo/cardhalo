@@ -47,6 +47,8 @@ fn create_merkle_tree(n: usize) -> (Vec<SigningKey>, Vec<MTLeaf>, MerkleTree) {
 }
 
 fn main() -> Result<()> {
+    env_logger::init();
+
     let seed = [0u8; 32]; // UNSAFE, constant seed is used for testing purposes
     let mut rng: StdRng = SeedableRng::from_seed(seed);
     // Prepare the private and public inputs to the circuit!
