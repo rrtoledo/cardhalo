@@ -59,11 +59,7 @@ pub fn common_scalar(
 
 pub fn common_g1(point: G1Element, transcript: Transcript) -> Transcript {
   let g1_bytes = compress(point)
-  trace @"g1 bytes": g1_bytes
-
   let bytes_to_append = bytearray.concat(prefix_common, g1_bytes)
-  trace @"prefix_common": prefix_common
-  trace @"bytes_to_append": bytes_to_append
   let new_bytes_for_hash =
     bytearray.concat(transcript.accumulated_for_hash, bytes_to_append)
 
