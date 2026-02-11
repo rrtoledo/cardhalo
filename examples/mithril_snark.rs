@@ -8,7 +8,7 @@ use midnight_proofs::{
     transcript::{CircuitTranscript, Transcript},
 };
 
-use log::{debug, info};
+use log::info;
 use mithril_circuits::{
     JubjubBase,
     certificate::Certificate,
@@ -115,11 +115,10 @@ fn main() -> Result<()> {
         Value::known(witness.clone()),
         None,
     );
-    debug!("circuit: {:?}", circuit);
+    info!("circuit: {:?}", circuit);
 
     let mut transcript: CircuitTranscript<CardanoFriendlyBlake2b> =
         CircuitTranscript::<CardanoFriendlyBlake2b>::init();
-    debug!("transcript: {:?}", transcript);
 
     // no instances, just dummy 42 to make prover and verifier happy
     let instances: &[&[&[Scalar]]] = &[&[
