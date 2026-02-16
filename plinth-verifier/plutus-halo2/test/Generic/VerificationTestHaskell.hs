@@ -47,11 +47,8 @@ proofTest = do
         p2 =
             mkScalar
                 ((parsedInputs !! 1) `modulo` bls12_381_field_prime)
-        p3 =
-            mkScalar
-                ((parsedInputs !! 2) `modulo` bls12_381_field_prime)
 
-        (final_verification, traces) = verify sampleProof p1 p2 p3
+        (final_verification, traces) = verify sampleProof p1 p2
     -- makes debug data yellow and easy to spot
     threadDelay 1000000
     putStrLn "\n"

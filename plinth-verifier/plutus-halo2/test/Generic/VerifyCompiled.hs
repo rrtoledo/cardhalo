@@ -24,8 +24,8 @@ import UntypedPlutusCore (DefaultFun, DefaultUni, UnrestrictedProgram (Unrestric
 
 verifyAdapter :: BuiltinData -> ()
 verifyAdapter proofAsData =
-    let PlutusTx.Just (proof, p1, p2, p3) = PlutusTx.fromBuiltinData proofAsData
-        (result, _) = verify proof p1 p2 p3
+    let PlutusTx.Just (proof, p1, p2) = PlutusTx.fromBuiltinData proofAsData
+        (result, _) = verify proof p1 p2
      in if result PlutusTx.== PlutusTx.True
             then ()
             else PlutusTx.error ()
@@ -33,21 +33,21 @@ verifyAdapter proofAsData =
 verifyCompiled :: CompiledCode (BuiltinData -> ())
 verifyCompiled = $$(PlutusTx.compile [||verifyAdapter||])
 
-sampleProofCompiled :: Scalar -> Scalar -> Scalar -> CompiledCode BuiltinData
-sampleProofCompiled p1 p2 p3 =
-    let proof = PlutusTx.toBuiltinData (sampleProof, p1, p2, p3)
+sampleProofCompiled :: Scalar -> Scalar -> CompiledCode BuiltinData
+sampleProofCompiled p1 p2 =
+    let proof = PlutusTx.toBuiltinData (sampleProof, p1, p2)
      in proof `seq` PlutusTx.liftCode plcVersion110 proof
 
-verifyAppliedCompiled :: Scalar -> Scalar -> Scalar -> CompiledCode ()
-verifyAppliedCompiled p1 p2 p3 =
-    case verifyCompiled `applyCode` sampleProofCompiled p1 p2 p3 of
+verifyAppliedCompiled :: Scalar -> Scalar -> CompiledCode ()
+verifyAppliedCompiled p1 p2 =
+    case verifyCompiled `applyCode` sampleProofCompiled p1 p2 of
         Left e -> error $ show e
         Right applied -> applied
 
-writeToFile :: Scalar -> Scalar -> Scalar -> IO ()
-writeToFile p1 p2 p3 =
+writeToFile :: Scalar -> Scalar -> IO ()
+writeToFile p1 p2  =
     BS.writeFile "VerifierScript.flat" . flat . UnrestrictedProgram <$> PlutusTx.getPlcNoAnn $
-        (proofMintingPolicyContractApplied p1 p2 p3)
+        (proofMintingPolicyContractApplied p1 p2 )
 
 -- proofMintingPolicyContractApplied
 
@@ -55,20 +55,19 @@ writeToFile p1 p2 p3 =
 {-# INLINEABLE proofMintingContract #-}
 proofMintingContract :: BuiltinData -> Bool
 proofMintingContract proof =
-    let PlutusTx.Just (proof', p1, p2, p3) = PlutusTx.fromBuiltinData proof
-        (result, _) = verify proof' p1 p2 p3
+    let PlutusTx.Just (proof', p1, p2) = PlutusTx.fromBuiltinData proof
+        (result, _) = verify proof' p1 p2
      in result PlutusTx.== PlutusTx.True
 
 proofMintingPolicyContractApplied ::
-    Scalar ->
     Scalar ->
     Scalar ->
     CompiledCodeIn
         DefaultUni
         DefaultFun
         PlutusTx.BuiltinUnit
-proofMintingPolicyContractApplied p1 p2 p3 =
+proofMintingPolicyContractApplied p1 p2 =
     case $$(PlutusTx.compile [||PlutusTx.check . proofMintingContract||])
-        `applyCode` (sampleProofCompiled p1 p2 p3) of
+        `applyCode` (sampleProofCompiled p1 p2) of
         Left e -> error $ show e
         Right applied -> applied
