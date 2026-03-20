@@ -34,6 +34,8 @@ pub type ParamsVK = ParamsVerifierKZG<Bls12>;
 pub type CTranscript = CircuitTranscript<CardanoFriendlyBlake2b>;
 
 fn main() -> Result<()> {
+    env_logger::init();
+
     // Prepare the private and public inputs to the circuit!
     let constant = Scalar::from(7);
     let a = Scalar::from(2);
@@ -123,6 +125,7 @@ fn main() -> Result<()> {
         &kzg_params,
         &vk,
         instances,
+        None,
         Some((proof.clone(), invalid_proof)),
     )
     .context("Aiken verifier generation failed")?;

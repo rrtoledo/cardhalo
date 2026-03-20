@@ -146,6 +146,7 @@ fn main() -> Result<()> {
         &kzg_params,
         &vk,
         instances,
+        None,
         Some((proof.clone(), invalid_proof)),
     )
     .context("Aiken verifier generation failed")?;
