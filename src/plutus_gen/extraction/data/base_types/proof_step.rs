@@ -1,0 +1,39 @@
+//! ProofExtractionSteps type
+
+use serde::{Deserialize, Serialize};
+
+/// This type lists all potential steps of the verifier.
+/// It is used to emit the right number of phases in the given language.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub(crate) enum ProofExtractionSteps {
+    // (Committed) Instance evaluation steps
+    CommittedInstanceEval,
+    InstanceEval,
+    // Advice and fixed column related steps
+    AdviceCommitments,
+    AdviceEval,
+    FixedEval,
+    // Permutation steps
+    PermutationsCommitted,
+    PermutationEval(char),
+    PermutationCommon,
+    // Lookup steps
+    LookupPermuted,
+    LookupCommitment,
+    LookupEval,
+    // Vanishing polynomial steps
+    VanishingRand,
+    RandomEval,
+    VanishingSplit,
+    // Trashcan steps
+    TrashCommitment,
+    TrashEval,
+    // Challenges extraction
+    SqueezeChallenge,
+    XCoordinate,
+    YCoordinate,
+    Theta,
+    Beta,
+    Gamma,
+    Trash,
+}

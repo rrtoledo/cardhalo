@@ -1,9 +1,11 @@
 /// Simple multiplication example based on the Halo2 book example,
 /// available at: https://zcash.github.io/halo2/user/simple-example.html
 use ff::Field;
-use halo2_proofs::circuit::{AssignedCell, Chip, Layouter, Region, SimpleFloorPlanner, Value};
-use halo2_proofs::plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Fixed, Selector};
-use halo2_proofs::poly::Rotation;
+use midnight_proofs::circuit::{AssignedCell, Chip, Layouter, Region, SimpleFloorPlanner, Value};
+use midnight_proofs::plonk::{
+    Advice, Circuit, Column, ConstraintSystem, Constraints, Error, Fixed, Selector,
+};
+use midnight_proofs::poly::Rotation;
 use std::marker::PhantomData;
 
 #[derive(Clone, Debug)]
@@ -52,8 +54,7 @@ impl<F: Field> FieldChip<F> {
             let lhs = meta.query_advice(advice[0], Rotation::cur());
             let rhs = meta.query_advice(advice[1], Rotation::cur());
             let out = meta.query_advice(advice[0], Rotation::next());
-            let s_mul = meta.query_selector(s_mul);
-            vec![s_mul * (lhs * rhs - out)]
+            Constraints::with_selector(s_mul, vec![lhs * rhs - out])
         });
 
         FieldConfig { advice, s_mul }
@@ -135,6 +136,7 @@ impl<F: Field> Circuit<F> for SimpleMulCircuit<F> {
     // Since we are using a single chip for everything, we can just reuse its config.
     type Config = FieldConfig;
     type FloorPlanner = SimpleFloorPlanner;
+    type Params = ();
 
     fn without_witnesses(&self) -> Self {
         Self::default()
@@ -185,10 +187,12 @@ impl<F: Field> Circuit<F> for SimpleMulCircuit<F> {
 #[cfg(test)]
 mod tests {
     use crate::circuits::simple_mul_circuit::SimpleMulCircuit;
-    use blstrs::{Base, Scalar};
+    use midnight_curves::{Base, BlsScalar as Scalar};
+
     use ff::Field;
-    use halo2_proofs::dev::MockProver;
-    use halo2_proofs::plonk::k_from_circuit;
+
+    use midnight_proofs::dev::MockProver;
+    use midnight_proofs::plonk::k_from_circuit;
 
     #[test]
     fn test_lookup_circuit() {

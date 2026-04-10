@@ -1,6 +1,6 @@
-/// Example circuit implementing ATMS signature verification and a lookup table.
-/// The lookup table does not serve a functional purpose and is included only to evaluate
-/// the complexity of Plutus verification for this type of circuit.
+/// ATMS circuit using a lookup table.
+/// The lookup table does not serve a functional purpose and is included only
+/// to evaluate the complexity of Plutus verification for this type of circuit.
 use atms_halo2::{
     ecc::chip::EccInstructions,
     instructions::MainGateInstructions,
@@ -8,13 +8,14 @@ use atms_halo2::{
     signatures::schnorr::SchnorrSig,
     util::RegionCtx,
 };
-use blstrs::{Base, JubjubAffine};
+use midnight_curves::{Base, JubjubAffine};
+
 use ff::Field;
-use halo2_proofs::circuit::{Layouter, SimpleFloorPlanner, Value};
-use halo2_proofs::plonk::{
+use midnight_proofs::circuit::{Layouter, SimpleFloorPlanner, Value};
+use midnight_proofs::plonk::{
     Advice, Circuit, Column, ConstraintSystem, Error, Fixed, Selector, TableColumn,
 };
-use halo2_proofs::poly::Rotation;
+use midnight_proofs::poly::Rotation;
 use std::convert::TryInto;
 
 #[derive(Clone, Default)]
@@ -23,7 +24,7 @@ pub struct AtmsLookupCircuit {
     pub inputs: Vec<(u64, usize)>, // (values, bit_len)
     pub max_bit_len: usize,
 
-    // atms inputs
+    // ATMS inputs
     pub signatures: Vec<Option<SchnorrSig>>,
     pub pks: Vec<JubjubAffine>,
     pub pks_comm: Base,
@@ -46,9 +47,9 @@ pub struct Pow2RangeConfig {
     //instance: Column<Instance>,
     q_pow2range: Selector,
     tag_col: Column<Fixed>,
-    /// The columns where the range-checked values are placed.
+    // The columns where the range-checked values are placed.
     val_cols: [Column<Advice>; NB_POW2RANGE_COLS],
-    // fixed columns of lookup table
+    // Fixed columns of lookup table
     t_tag: TableColumn,
     t_val: TableColumn,
 }
@@ -56,6 +57,7 @@ pub struct Pow2RangeConfig {
 impl Circuit<Base> for AtmsLookupCircuit {
     type Config = AtmsLookupConfig;
     type FloorPlanner = SimpleFloorPlanner;
+    type Params = ();
 
     fn without_witnesses(&self) -> Self {
         Self::default()
@@ -72,8 +74,8 @@ impl Circuit<Base> for AtmsLookupCircuit {
             })
             .collect::<Vec<_>>();
 
-        ///////// let instance = meta.instance_column();
-        ///////// meta.enable_equality(instance);
+        // let instance = meta.instance_column();
+        // meta.enable_equality(instance);
         let q_pow2range = meta.complex_selector();
         let tag_col = meta.fixed_column();
         let t_tag = meta.lookup_table_column();
@@ -140,7 +142,7 @@ impl Circuit<Base> for AtmsLookupCircuit {
             },
         )?;
 
-        // todo check offsets, as it was incremented 2 times before next iteration
+        // TODO check offsets, as it was incremented 2 times before next iteration
         layouter.assign_region(
             || "pow2range test",
             |mut region| {
@@ -272,16 +274,17 @@ impl Circuit<Base> for AtmsLookupCircuit {
 mod tests {
     use super::*;
     use crate::circuits::atms_circuit::prepare_test_signatures;
-    use blstrs::Base;
+    use midnight_curves::Base;
+
     use ff::Field;
-    use halo2_proofs::dev::MockProver;
-    use halo2_proofs::plonk::k_from_circuit;
+    use midnight_proofs::dev::MockProver;
+    use midnight_proofs::plonk::k_from_circuit;
     use rand::SeedableRng;
     use rand::prelude::StdRng;
 
     #[test]
     fn test_circuit() {
-        // const NUM_PARTIES: usize = 2001; // todo: multiple of three so Rescue does not complain. We should do some padding
+        // const NUM_PARTIES: usize = 2001;
         // const THRESHOLD: usize = 1602;
 
         const NUM_PARTIES: usize = 6;
